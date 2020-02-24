@@ -72,9 +72,8 @@ def get_parameter_grid(model_name, momentum=False, size=10, randomize=True, seed
         raise ValueError('Parameter space for model {} is not defined.'.format(model_name))
 
     values_grid = pd.DataFrame.from_records(itertools.product(*param_space.values()), columns=param_space.keys())
-    how = 'everywhere' if model_name == 'Elo' else 'once'
     if momentum:
-        values_grid = add_momentum(values_grid, how, seed=seed)
+        values_grid = add_momentum(values_grid, 'once', seed=seed)
     if randomize:
         values_grid = values_grid.sample(frac=1, random_state=seed).reset_index(drop=True)
     return values_grid.head(size)  # Limit number of experiments
@@ -190,11 +189,11 @@ def get_args():
     parser = argparse.ArgumentParser(description="Parameter optimization via grid search for different models")
     parser.add_argument("--experiment", help="Experiment name - that is the directory where results are saved",
                         default='test', type=str, required=False)
-    parser.add_argument("--model", help="Short name of a model to optimize", required=True)
+    parser.add_argument("--model", help="Model to be optimized", required=True)
     parser.add_argument("--league", help="One of the leagues available", required=True)
-    parser.add_argument("--n_jobs", help="Number of cores to use to perform grid search", type=int, default=1)
-    parser.add_argument("--n_grid", help="Maximal limit size of the grid search", type=int, default=3)
-    parser.add_argument("--add_momentum", help="Whether to add momentum to parameter grid", action='store_true')
+    parser.add_argument("--n_jobs", help="Number of cores to use to perform random search", type=int, default=1)
+    parser.add_argument("--n_grid", help="Maximal limit size of the param space", type=int, default=3)
+    parser.add_argument("--momentum", help="Whether to add momentum to parameter grid", action='store_true')
     parser.add_argument("--seed", help="Seed for random search", type=int, default=321)
     parser.add_argument("--test", help="Do a test run", action='store_true')
     args = parser.parse_args()
@@ -206,6 +205,8 @@ def get_args():
 
 def main():
     args = get_args()
+    if args.momentum and not args.model.startswith('Iterative'):
+        raise ValueError('Momentum is supported only by iterative models based on gradient descent.')
     model_class = getattr(rating_models, args.model)
     # print(vars(args))
 
@@ -215,7 +216,7 @@ def main():
     eval_functions = get_eval_functions()
 
     # Random search
-    results = parameter_search(model_class, args.add_momentum, matches,
+    results = parameter_search(model_class, args.momentum, matches,
                                seasons_train, seasons_valid, seasons_test, eval_functions,
                                args.n_grid, args.n_jobs, args.seed, args.test)
 
