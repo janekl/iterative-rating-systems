@@ -262,19 +262,17 @@ class IterativeOLR:
 class PoissonRegression(ABC):
     """Base implementation of Poisson regression."""
 
-    def __init__(self, penalty='l2', lambda_reg=0, eps=1e-8, optimizer='BFGS'):
+    def __init__(self, penalty='l2', lambda_reg=0, optimizer='BFGS'):
         assert penalty in [None, 'l1', 'l2']
         self.optimizer = optimizer
         self.penalty = penalty
         self.lambda_reg = lambda_reg
-        self.eps = eps
         self.c = None
         self.h = None
         self.betas = None
 
     def _predict_proba(self, X, m):
         Xb = X.dot(self.betas)
-        # n = len(self.betas)
         eXb_plus_c = np.exp(Xb) + self.c
         mu1, mu2 = eXb_plus_c[:m] + self.h, eXb_plus_c[m:]
         p3 = skellam.cdf(-1, mu1=mu1, mu2=mu2)
@@ -292,7 +290,7 @@ class PoissonRegression(ABC):
             regularization = 0.5 * self.lambda_reg * np.square(betas).sum()
         return regularization
 
-    def _negative_loglik(self, params, X, y, sample_weight, m, n):
+    def _negative_loglik(self, params, X, y, sample_weight, m):
         c, h = params[:2]
         betas = params[2:]
         Xb = X.dot(betas) + c
@@ -302,6 +300,27 @@ class PoissonRegression(ABC):
             return -np.sum((y * Xb - np.exp(Xb)) * sample_weight) + penalty
         else:
             return -np.sum(y * Xb - np.exp(Xb)) + penalty
+
+    def _get_grad_regularization(self, betas):
+        regularization = 0.0
+        if self.penalty == 'l1':
+            regularization = self.lambda_reg * np.sign(betas)
+        elif self.penalty == 'l2':
+            regularization = self.lambda_reg * betas
+        return regularization
+
+    def _grad_negative_loglik(self, params, X, y, sample_weight, m):
+        c, h = params[:2]
+        betas = params[2:]
+        Xb = X.dot(betas) + c
+        Xb[:m] += h
+        eXb = np.exp(Xb)
+        z = y - eXb
+        if sample_weight is not None:
+            z *= sample_weight
+        zs1, zs2 = z[:m].sum(), z[m:].sum()
+        grad = -np.concatenate([[zs1 + zs2], [zs1], z.dot(X) - self._get_grad_regularization(betas)])
+        return grad
 
     def _get_c_and_hta(self):
         """TODO: Function to derive home team advantage and intercept."""
@@ -314,19 +333,15 @@ class PoissonRegression(ABC):
     def fit(self, X, y, sample_weight=None):
         X = self.get_features(X)
         n = X.shape[1]
-        m = int(len(X) / 2)
-        # How should `y` look like? Needs to be passed in parameter_search.py
+        m = len(X) // 2
         y = np.reshape(y, -1, 'F')
         if sample_weight is not None:
-            sample_weight = np.hstack([sample_weight, sample_weight])
+            sample_weight = np.concatenate([sample_weight, sample_weight])
         # TODO: Better starting values based on y?
-        params = np.concatenate([np.array([0.01, 0.3]), 0.5 * np.random.randn(n)])
-        # if self.betas is not None and len(self.betas) == n:
-        #     print('Previous estimate is perhaps good starting point')
-        #     params[2:] = self.betas
-        print('optimizer =', self.optimizer)
-        opt = optimize.minimize(self._negative_loglik, x0=params, args=(X, y, sample_weight, m, n),
-                                method=self.optimizer, jac=False, options={'disp': False, 'maxiter': 10**6})
+        params = np.concatenate([np.array([0.01, 0.3]), np.zeros(n)])
+        opt = optimize.minimize(self._negative_loglik, x0=params, args=(X, y, sample_weight, m),
+                                method=self.optimizer, jac=self._grad_negative_loglik,
+                                options={'disp': False, 'maxiter': None})
         params = opt.x
         self.c, self.h = params[:2]
         self.betas = params[2:]
@@ -392,15 +407,18 @@ class PoissonSingleRatings(PoissonRegression):
 class PoissonDoubleRatings(PoissonRegression):
     """Rating model based on two-parameter Poisson model."""
 
-    def __init__(self,  goal_cap=20, weight=None, weight_params=None, **kwargs):
+    def __init__(self,  goal_cap=20, weight=None, weight_params=None, rho=0, **kwargs):
         super(PoissonDoubleRatings, self).__init__(**kwargs)  # Specify explicitly?
         self.teams = None
         self.team_encoding = None
         self.goal_cap = goal_cap
+        self.rho = rho
         if weight is not None:
             self.weight_fun = getattr(tools, weight)
             if weight_params is not None:
                 self.weight_params = weight_params
+        else:
+            self.weight_fun = None
 
     def _set_ratings_for_new_teams(self, X):  # TODO
         n = len(self.teams)
@@ -435,6 +453,25 @@ class PoissonDoubleRatings(PoissonRegression):
             X[i, [team1, n + team2]] = [1, -1]
             X[i + m, [team2, n + team1]] = [1, -1]
         return X
+
+    def _get_regularization(self, betas):
+        regularization = 0.0
+        if self.penalty == 'l1':
+            regularization = self.lambda_reg * np.abs(betas).sum()
+        elif self.penalty == 'l2':
+            n = len(betas) // 2
+            corr = betas[:n].dot(betas[n:])
+            regularization = self.lambda_reg * (0.5 * np.square(betas).sum() - self.rho * corr)
+        return regularization
+
+    def _get_grad_regularization(self, betas):
+        regularization = 0.0
+        if self.penalty == 'l1':
+            regularization = self.lambda_reg * np.sign(betas)
+        elif self.penalty == 'l2':
+            n = len(betas) // 2
+            regularization = self.lambda_reg * (betas - self.rho * np.concatenate((betas[n:], betas[:n])))
+        return regularization
 
     def get_features(self, X, prediction_phase=False):
         if prediction_phase:

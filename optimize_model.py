@@ -12,65 +12,65 @@ import os
 import argparse
 
 
+model_param_space = {
+    'Elo': OrderedDict([
+        ('k', [10., 20., 40.]),
+        ('c', [10.]),   # This can be constant
+        ('d', [400.]),  # This can be constant too
+        ('lambda_goals', [1., 1.25, 1.5, 1.75])
+    ]),
+    'PoissonSingleRatings': OrderedDict([
+        ('penalty', ['l2']),
+        ('lambda_reg', np.linspace(0., 15., 31)),
+        ('weight', ['exponential_weights']),
+        ('weight_params', np.linspace(0.0, 0.006, 7)),
+        ('goal_cap', [-1])
+    ]),
+    'PoissonDoubleRatings': OrderedDict([
+        ('penalty', ['l2']),
+        ('lambda_reg', np.linspace(0., 15., 31)),
+        ('rho', np.concatenate((np.linspace(0.0, 0.95, 20), [0.99]))),
+        ('weight', ['exponential_weights']),
+        ('weight_params', np.linspace(0.000, 0.006, 7)),
+        ('goal_cap', [-1])
+    ]),
+    'IterativeMargin': OrderedDict([
+        ('c', [0.0, 0.0001, 0.0002, 0.001, 0.002, 0.004, 0.01, 0.02, 0.1, 0.2]),
+        ('h', np.linspace(0.2, 0.4, 5)),
+        ('lr', [0.001, 0.005, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1]),
+        ('lambda_reg', [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.01]),
+        ('goal_cap', [-1])
+    ]),
+    'IterativeOLR': OrderedDict([
+        ('c', np.linspace(0.4, 0.7, 7)),
+        ('h', np.linspace(0.2, 0.5, 7)),
+        ('lr', [0.01, 0.02, 0.04, 0.06, 0.08, 0.1]),
+        ('lambda_reg', [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02])
+    ]),
+    'IterativePoisson': OrderedDict([
+        # How big should be parameter grid for an extra parameter?
+        ('c', [0.0, 0.0001, 0.0002, 0.001, 0.002, 0.004, 0.01, 0.02, 0.1, 0.2]),
+        ('h', np.linspace(0.2, 0.4, 5)),
+        ('lr', [0.001, 0.005, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1]),
+        ('lambda_reg', [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.01]),
+        ('rho', np.linspace(0., 1., 21)),
+        ('goal_cap', [-1])
+    ]),
+    'OrdinalLogisticRatings': OrderedDict([
+        ('penalty', ['l1', 'l2']),
+        ('lambda_reg', np.linspace(0., 15., 31)),
+        ('weight', ['exponential_weights']),
+        ('weight_params', np.linspace(0.0, 0.006, 7))
+    ])
+}
+
+
 def get_parameter_grid(model_name, momentum=False, size=10, randomize=True, seed=1234321):
     """Defines parameter grid for a given model."""
-    if model_name == 'Elo':
-        param_space = OrderedDict({
-            'k': [10., 20., 40.],
-            'c': [10.],   # This can be constant
-            'd': [400.],  # This can be constant too
-            'lambda_goals': [1., 1.25, 1.5, 1.75]})
-    elif model_name == 'PoissonSingleRatings':
-        param_space = OrderedDict([
-            ('penalty', ['l1', 'l2']),
-            ('lambda_reg', [2.5, 2.0, 1.75, 1.5, 1.25, 1., 0.75, 0.5, 0.25]),
-            ('weight', ['exponential_weights']),
-            ('weight_params', np.linspace(0.0, 0.005, 6)),
-            ('goal_cap', [4, 5, 6, 7, -1])
-        ])
-    elif model_name == 'PoissonDoubleRatings':
-        param_space = OrderedDict([
-            ('penalty', ['l1', 'l2']),
-            ('lambda_reg', [2.5, 2.0, 1.75, 1.5, 1.25, 1., 0.75, 0.5, 0.25]),
-            ('weight', ['exponential_weights']),
-            ('weight_params', np.linspace(0.0, 0.005, 6)),
-            ('goal_cap', [4, 5, 6, 7, -1])
-        ])
-    elif model_name == 'IterativeMargin':
-        param_space = OrderedDict([
-            ('c', [0.0, 0.0001, 0.0002, 0.001, 0.002, 0.004, 0.01, 0.02, 0.1, 0.2]),
-            ('h', [0.2, 0.25, 0.275, 0.3, 0.325, 0.35, 0.375, 0.4]),
-            ('lr', [0.005, 0.0075, 0.01, 0.0125, 0.015, 0.02, 0.025, 0.03]),
-            ('lambda_reg', [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.01]),
-            ('goal_cap', [4, 5, 6, 7, -1])
-        ])
-    elif model_name == 'IterativeOLR':
-        param_space = OrderedDict([
-            ('c', [0.45, 0.5, 0.55, 0.6, 0.65, 0.7]),
-            ('h', [0.25, 0.3, 0.325, 0.35, 0.375, 0.4, 0.45]),
-            ('lr', [0.01, 0.02, 0.04, 0.06, 0.07, 0.08, 0.09, 0.1, 0.12]),
-            ('lambda_reg', [0.01, 0.02, 0.04, 0.05, 0.08, 0.1])
-        ])
-    elif model_name == 'IterativePoisson':
-        # How big should be parameter grid for an extra parameter?
-        param_space = OrderedDict([
-            ('c', [0.0, 0.0001, 0.0002, 0.001, 0.002, 0.004, 0.01, 0.02, 0.1, 0.2]),
-            ('h', [0.2, 0.25, 0.275, 0.3, 0.325, 0.35, 0.375, 0.4]),
-            ('lr', [0.005, 0.0075, 0.01, 0.0125, 0.015, 0.02, 0.025, 0.03]),
-            ('lambda_reg', [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.01]),
-            ('rho', [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
-            ('goal_cap', [4, 5, 6, 7, -1])
-        ])
-    elif model_name == 'OrdinalLogisticRatings':
-        param_space = OrderedDict([
-            ('penalty', ['l1', 'l2']),
-            ('lambda_reg', [2.5, 2.0, 1.75, 1.5, 1.25, 1., 0.75, 0.5, 0.25]),
-            ('weight', ['exponential_weights']),
-            ('weight_params', np.linspace(0.0, 0.005, 6))
-        ])
-    else:
+    try:
+        param_space = model_param_space[model_name]
+    except KeyError:
         raise ValueError('Parameter space for model {} is not defined.'.format(model_name))
-
     values_grid = pd.DataFrame.from_records(itertools.product(*param_space.values()), columns=param_space.keys())
     if momentum:
         values_grid = add_momentum(values_grid, 'once', seed=seed)
@@ -97,7 +97,8 @@ def add_momentum(values_grid, how, seed=None):
     return values_grid
 
 
-def get_data(league_seasons, usecols=('Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR'), include_odds=()):
+def get_data(league_seasons, usecols=('Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR'), include_odds=(),
+             stages_method="rounds"):
     """Load data from http://www.football-data.co.uk/."""
     odds_cols = ()
     for b in include_odds:
@@ -105,13 +106,13 @@ def get_data(league_seasons, usecols=('Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'F
     matches_list = []
     for season in league_seasons:
         matches = pd.read_csv(os.path.join(DATA_PATH, season + '.csv'), usecols=usecols + odds_cols)
+        matches.dropna(subset=usecols, inplace=True)
         matches['Date'] = pd.to_datetime(matches['Date'], dayfirst=True)
         matches = matches.sort_values('Date').reset_index(drop=True)
-        matches = tools.determine_stages(matches)
+        matches = tools.determine_stages(matches, stages_method)
         matches.insert(0, 'Season', season)
         matches_list.append(matches)
     matches = pd.concat(matches_list)
-    matches.dropna(subset=usecols, inplace=True)
     matches = matches.reset_index(drop=True)
     matches.loc[:, ['FTHG', 'FTAG']] = matches[['FTHG', 'FTAG']].astype(int)
     matches['FTR'] = matches['FTR'].map({'H': 0, 'D': 1, 'A': 2})
@@ -124,7 +125,6 @@ def evaluate(model_class, params, matches, valid_index, test_index,
     model = model_class(**params)
     output = {}
     start = time()
-    print(params)
     predictions = model.fit_predict(matches, seasons_train, seasons_valid, seasons_test)
     output['train_time'] = np.round((time() - start) / 60., 4)
     # TODO: Monitor train results
@@ -143,6 +143,7 @@ def parameter_search(model_class, momentum, matches, seasons_train, seasons_vali
     params_grid = get_parameter_grid(model_class.__name__, momentum=momentum, size=size, seed=seed)
     valid_index = matches['Season'].isin(seasons_valid).values
     test_index = matches['Season'].isin(seasons_test).values
+    print("params_grid size: {}".format(len(params_grid)))
     # For testing: sequential vs parallel
     if test_run:
         results = []
@@ -191,15 +192,15 @@ def get_args():
                         default='test', type=str, required=False)
     parser.add_argument("--model", help="Model to be optimized", required=True)
     parser.add_argument("--league", help="One of the leagues available", required=True)
+    parser.add_argument("--stages_method", help="Method for determining matchdays for sliding window predictions",
+                        default="rounds")
     parser.add_argument("--n_jobs", help="Number of cores to use to perform random search", type=int, default=1)
     parser.add_argument("--n_grid", help="Maximal limit size of the param space", type=int, default=3)
     parser.add_argument("--momentum", help="Whether to add momentum to parameter grid", action='store_true')
     parser.add_argument("--seed", help="Seed for random search", type=int, default=321)
     parser.add_argument("--test", help="Do a test run", action='store_true')
     args = parser.parse_args()
-    results_dir = os.path.join('results', args.experiment)
-    if not os.path.isdir(results_dir):
-        os.makedirs(results_dir)
+    os.makedirs(os.path.join('results', args.experiment), exist_ok=True)
     return args
 
 
@@ -212,7 +213,7 @@ def main():
 
     # Evaluation setup & data
     seasons_train, seasons_valid, seasons_test, seasons_all = train_valid_test_split(args.league, args.test)
-    matches = get_data(seasons_all)
+    matches = get_data(seasons_all, stages_method=args.stages_method)
     eval_functions = get_eval_functions()
 
     # Random search

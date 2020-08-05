@@ -1,6 +1,9 @@
+import itertools
+
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
+from tqdm import tqdm
 
 
 def goals2class(goals):
@@ -13,21 +16,29 @@ def goals2class(goals):
     return 1
 
 
-def goals2goals(goals, cap=np.nan):
+def goals2goals(goals, cap=-1):
     if cap != -1:
         goals = goals.map(lambda x: min(x, cap))
     return goals
 
 
-def determine_stages(matches):
-    """Determine round of play my clustering dates.
+def determine_stages(matches, method="rounds"):
+    """Determine round of play by days or by clustering dates to get rounds.
 
-    The solution is an overkill but it works in most cases."""
-    k = int(2 * len(matches) / matches['HomeTeam'].nunique())
-    kmeans = KMeans(n_clusters=k, init='k-means++', n_init=50)
-    stage = pd.Series(kmeans.fit_predict(matches[['Date']]))
-    rename_rounds = {j: i for i, j in enumerate(stage.unique(), 1)}
-    stage = stage.map(rename_rounds)
+    The solution for rounds is an overkill but it works in most cases."""
+    if method == "rounds":
+        k = int(2 * len(matches) / matches['HomeTeam'].nunique())
+        kmeans = KMeans(n_clusters=k, init='k-means++', n_init=50)
+        stage = pd.Series(kmeans.fit_predict(matches[['Date']]))
+        rename_rounds = {j: i for i, j in enumerate(stage.unique(), 1)}
+        stage = stage.map(rename_rounds)
+    elif method == "days":
+        assert matches["Date"].is_monotonic_increasing
+        stage = []
+        for i, (_, days) in enumerate(itertools.groupby(matches["Date"]), 1):
+            stage.extend(i for _ in days)
+    else:
+        raise ValueError("Unknown method = '{}' for determining stages.".format(method))
     matches.insert(1, 'Stage', stage)
     return matches
 
@@ -80,7 +91,7 @@ def brier(preds, y, average=True):
     return scores
 
 
-def evaluate(preds, y, eval_functions=['accuracy', 'logloss', 'rps', 'brier'], eps=1e-8, average=True):
+def evaluate(preds, y, eval_functions=('accuracy', 'logloss', 'rps', 'brier'), average=True):
     """Compute evaluation metrics for predicitons given results."""
     return pd.Series({eval_fun: globals()[eval_fun](preds, y, average=average) for eval_fun in eval_functions})
 
@@ -92,17 +103,15 @@ def exponential_weights(x, a):
 def generate_predictions(model, matches, seasons, label_def, label_kwargs=None):
     """Generate predictions for given seasons."""
     predictions = np.zeros((len(matches), 3))
-    print('Running optimization for seasons: {}'.format(seasons))
-    if label_kwargs is None:
-        label_kwargs = {}
+    label_kwargs = label_kwargs or {}
     y = matches[['FTHG', 'FTAG']].apply(label_def, axis=1, **label_kwargs).values
     for season in sorted(seasons):
+        previous_seasons = matches['Season'] < season
         current_season = matches['Season'].eq(season)
         stage_last = matches[current_season]['Stage'].max()
         stage_start = 0
         for stage in range(stage_start, stage_last):
-            # print(season, stage)
-            train_index = (matches['Season'] < season) | (current_season & (matches['Stage'] <= stage))
+            train_index = previous_seasons | (current_season & (matches['Stage'] <= stage))
             matches_train = matches.loc[train_index]
             X_tr = matches_train[['HomeTeam', 'AwayTeam']]
             y_tr = y[train_index.values]
@@ -121,7 +130,7 @@ def generate_predictions(model, matches, seasons, label_def, label_kwargs=None):
 
 
 def preprocess_odds(matches, htg_col="home_team_goal", atg_col="away_team_goal",
-                    bookies=["B365", "BW", "IW", "LB", "PS", "WH", "SJ", "VC", "GB", "BS"]):
+                    bookies=("B365", "BW", "IW", "LB", "PS", "WH", "SJ", "VC", "GB", "BS")):
     """Calculate probabilities from bookmaker odds for given matches."""
     y_odds = matches[[htg_col, atg_col]].apply(goals2class, axis=1)
     y_freq = y_odds.value_counts(normalize=True, sort=False).values  # If odds are missing use freq (rare case)
