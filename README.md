@@ -1,6 +1,6 @@
 # Iterative Rating Systems
 
-This repository provides an implementation of several new iterative models for rating of sport teams, as illustrated by the example of association football (soccer). The presented models are based upon the gradient descent heuristic, which makes the rating update equations easy to interpret, explain, and adjust once new match results are observed. An prominent instance of a rating model that fits into this framework is the Elo rating system.
+This repository provides an implementation of several new iterative models for rating of sport teams, illustrated by the example of association football (soccer). The presented models are based upon the gradient descent algorithm, which makes the rating update equations easy to interpret, explain, and adjust once new match results are observed. A prominent instance of a rating model that fits into this framework is the Elo rating system.
 
 The iterative versions of the popular football match outcome models are not only easier to maintain but also yield more accurate predictions than their counterparts estimated jointly using a sample of matches.
 
@@ -14,15 +14,17 @@ The repository is an integral part the paper by Jan Lasek and Marek Gągolewski 
 
 ### Environment
 
-The project was developed in Python 3.5+. Package dependencies can be installed with `pip`:
+The project was developed in Python 3.5+. Package dependencies can be installed with `pip` (in a virtual environment):
 
 ```bash
 $ pip install -r requirements.txt
 ```
 
+Directory `tests` provides some testing routines that can be run using [pytest](https://docs.pytest.org/en/stable/).
+
 ### Data
 
-Data for running the computations are available on-line at http://www.football-data.co.uk/. It can be conveniently downloaded using the script located in the `data/` directory:
+Data for running the computations are available on-line at http://www.football-data.co.uk/. It can be conveniently downloaded using the script located in the `data` directory:
 
 ```bash
 $ ./download_data.sh
