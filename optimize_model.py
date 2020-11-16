@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import itertools
 from collections import OrderedDict
-import tools
+from utils.evaluation import logloss, rps, brier, accuracy
+from utils.data import get_data
 import rating_models
-from config import DATA_PATH
 from joblib import Parallel, delayed
 from tqdm import tqdm
 from time import time
@@ -97,28 +97,6 @@ def add_momentum(values_grid, how, seed=None):
     return values_grid
 
 
-def get_data(league_seasons, usecols=('Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR'), include_odds=(),
-             stages_method="rounds"):
-    """Load data from http://www.football-data.co.uk/."""
-    odds_cols = ()
-    for b in include_odds:
-        odds_cols += ("%sH" % b, "%sD" % b, "%sA" % b)
-    matches_list = []
-    for season in league_seasons:
-        matches = pd.read_csv(os.path.join(DATA_PATH, season + '.csv'), usecols=usecols + odds_cols)
-        matches.dropna(subset=usecols, inplace=True)
-        matches['Date'] = pd.to_datetime(matches['Date'], dayfirst=True)
-        matches = matches.sort_values('Date').reset_index(drop=True)
-        matches = tools.determine_stages(matches, stages_method)
-        matches.insert(0, 'Season', season)
-        matches_list.append(matches)
-    matches = pd.concat(matches_list)
-    matches = matches.reset_index(drop=True)
-    matches.loc[:, ['FTHG', 'FTAG']] = matches[['FTHG', 'FTAG']].astype(int)
-    matches['FTR'] = matches['FTR'].map({'H': 0, 'D': 1, 'A': 2})
-    return matches
-
-
 def evaluate(model_class, params, matches, valid_index, test_index,
              seasons_train, seasons_valid, seasons_test, eval_functions):
     """Train and evaluate model for a given parameter setup."""
@@ -178,10 +156,10 @@ def train_valid_test_split(league, test_run):
 
 def get_eval_functions():
     eval_functions = [
-        tools.logloss,
-        tools.rps,
-        tools.brier,
-        tools.accuracy
+        logloss,
+        rps,
+        brier,
+        accuracy
     ]
     return eval_functions
 
@@ -200,31 +178,31 @@ def get_args():
     parser.add_argument("--seed", help="Seed for random search", type=int, default=321)
     parser.add_argument("--test", help="Do a test run", action='store_true')
     args = parser.parse_args()
-    os.makedirs(os.path.join('results', args.experiment), exist_ok=True)
     return args
 
 
-def main():
-    args = get_args()
-    if args.momentum and not args.model.startswith('Iterative'):
+def main(experiment, model, league, stages_method, n_jobs, n_grid, momentum, seed, test):
+    if momentum and not model.startswith('Iterative'):
         raise ValueError('Momentum is supported only by iterative models based on gradient descent.')
-    model_class = getattr(rating_models, args.model)
-    # print(vars(args))
+    model_class = getattr(rating_models, model)
 
     # Evaluation setup & data
-    seasons_train, seasons_valid, seasons_test, seasons_all = train_valid_test_split(args.league, args.test)
-    matches = get_data(seasons_all, stages_method=args.stages_method)
+    seasons_train, seasons_valid, seasons_test, seasons_all = train_valid_test_split(league, test)
+    matches = get_data(seasons_all, stages_method=stages_method)
     eval_functions = get_eval_functions()
 
     # Random search
-    results = parameter_search(model_class, args.momentum, matches,
-                               seasons_train, seasons_valid, seasons_test, eval_functions,
-                               args.n_grid, args.n_jobs, args.seed, args.test)
+    results = parameter_search(model_class, momentum, matches, seasons_train, seasons_valid, seasons_test,
+                               eval_functions, n_grid, n_jobs, seed, test)
 
     # Results save
-    save_file = os.path.join('results', args.experiment, '{}_{}.csv'.format(args.league, args.model))
+    results_dir = os.path.join('results', experiment)
+    os.makedirs(results_dir, exist_ok=True)
+    save_file = os.path.join(results_dir, '{}_{}.csv'.format(league, model))
     results.to_csv(save_file, index=False)
 
 
 if __name__ == '__main__':
-    main()
+    args = get_args()
+    main(args.experiment, args.model, args.league, args.stages_method, args.n_jobs,
+         args.n_grid, args.momentum, args.seed, args.test)

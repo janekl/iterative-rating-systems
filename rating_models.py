@@ -3,8 +3,8 @@ import pandas as pd
 from scipy import optimize
 from scipy.stats import skellam
 from scipy.special import expit as logistic
-import tools
-from tools import generate_predictions, goals2class, goals2goals
+import utils.model
+from utils.model import generate_predictions, goals2class, goals2goals
 from abc import ABC, abstractmethod
 
 
@@ -87,7 +87,7 @@ class OrdinalLogisticRegression:
         self.lambda_reg = lambda_reg
         self.eps = eps
         if weight is not None:
-            self.weight_fun = getattr(tools, weight)
+            self.weight_fun = getattr(utils.model, weight)
             if weight_params is not None:
                 self.weight_params = weight_params
                 print('Setting weight_params = {}'.format(weight_params))
@@ -226,7 +226,8 @@ class IterativeOLR:
         p2 = 1.0 - p1 - p3
         return [p1, p2, p3]
 
-    def get_update(self, result, preds):
+    @staticmethod
+    def get_update(result, preds):
         if result == 0:
             return 1 - preds[0]
         if result == 1:
@@ -362,7 +363,7 @@ class PoissonSingleRatings(PoissonRegression):
         self.team_encoding = None
         self.goal_cap = goal_cap
         if weight is not None:
-            self.weight_fun = getattr(tools, weight)
+            self.weight_fun = getattr(utils.model, weight)
             if weight_params is not None:
                 self.weight_params = weight_params
 
@@ -414,7 +415,7 @@ class PoissonDoubleRatings(PoissonRegression):
         self.goal_cap = goal_cap
         self.rho = rho
         if weight is not None:
-            self.weight_fun = getattr(tools, weight)
+            self.weight_fun = getattr(utils.model, weight)
             if weight_params is not None:
                 self.weight_params = weight_params
         else:
