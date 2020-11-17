@@ -12,11 +12,12 @@ def is_data_available(league):
 
 def test_optimize_model():
     league = "SP"
+    experiment = "_pytest"
     assert is_data_available(league), "Please download some data first!"
     for model in ("IterativeMargin", "OrdinalLogisticRatings"):
-        main(experiment="__pytest__", model=model, league=league, stages_method="rounds",
+        main(experiment=experiment, model=model, league=league, stages_method="rounds",
              n_jobs=2, n_grid=5, momentum=False, seed=0, test=True)
-        result_file = os.path.join("results", "pytest", "{}_{}.csv".format(league, model))
+        result_file = os.path.join("results", experiment, "{}_{}.csv".format(league, model))
         assert os.path.isfile(result_file)
         results = pd.read_csv(result_file)
         assert len(results) == 5

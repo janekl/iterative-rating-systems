@@ -6,7 +6,7 @@ The iterative versions of the popular football match outcome models are not only
 
 The figure below concerns the *big six* Premier League teams for three selected seasons. The ratings are obtained through the iterative version of the one-parameter Poisson model which proved to be the most accurate approach in the comparison.
 
-![big six](https://github.com/janekl/iterative-rating-systems/blob/master/big_six_ratings.png?raw=true)
+![big six](https://github.com/janekl/iterative-rating-systems/blob/master/misc/big_six_ratings.png?raw=true)
 
 The repository is an integral part the paper by Jan Lasek and Marek Gągolewski *"Interpretable sport team rating models based on the gradient descent algorithm"* (under review).
 
@@ -20,7 +20,10 @@ The project was developed in Python 3.5+. Package dependencies can be installed 
 $ pip install -r requirements.txt
 ```
 
-Directory `tests` provides some testing routines that can be run using [pytest](https://docs.pytest.org/en/stable/).
+Directory `tests` provides some testing routines that can be run using [pytest](https://docs.pytest.org/en/stable/):
+```bash
+$ ./run_tests.sh
+```
 
 ### Data
 
