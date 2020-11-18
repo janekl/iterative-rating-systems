@@ -57,7 +57,7 @@ model_param_space = {
         ('goal_cap', [-1])
     ]),
     'OrdinalLogisticRatings': OrderedDict([
-        ('penalty', ['l1', 'l2']),
+        ('penalty', ['l2']),
         ('lambda_reg', np.linspace(0., 15., 31)),
         ('weight', ['exponential_weights']),
         ('weight_params', np.linspace(0.0, 0.006, 7))
