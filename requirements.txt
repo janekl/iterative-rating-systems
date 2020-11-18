@@ -1,7 +1,9 @@
+argon2-cffi==20.1.0
 attrs==20.3.0
 backcall==0.1.0
-bleach==2.1.4
-certifi==2018.8.24
+bleach==3.2.1
+certifi==2020.6.20
+cffi==1.14.3
 cycler==0.10.0
 decorator==4.4.0
 defusedxml==0.6.0
@@ -12,15 +14,13 @@ iniconfig==1.1.1
 ipykernel==4.10.0
 ipython==6.5.0
 ipython-genutils==0.2.0
-ipywidgets==7.4.1
 jedi==0.12.1
-Jinja2==2.10
+Jinja2==2.11.2
 joblib==0.12.3
 jsonschema==2.6.0
-jupyter==1.0.0
-jupyter-client==5.3.1
+jupyter-client==6.1.7
 jupyter-console==5.2.0
-jupyter-core==4.5.0
+jupyter-core==4.6.3
 kiwisolver==1.0.1
 MarkupSafe==1.0
 matplotlib==3.0.0
@@ -29,7 +29,7 @@ mkl-fft==1.0.6
 mkl-random==1.0.1
 nbconvert==5.5.0
 nbformat==4.4.0
-notebook==5.6.0
+notebook==6.1.5
 numpy==1.15.2
 packaging==20.4
 pandas==0.23.4
@@ -44,6 +44,7 @@ prometheus-client==0.7.1
 prompt-toolkit==1.0.15
 ptyprocess==0.6.0
 py==1.9.0
+pycparser==2.20
 Pygments==2.4.2
 pyparsing==2.4.2
 pytest==6.1.2
@@ -58,7 +59,7 @@ Send2Trash==1.5.0
 simplegeneric==0.8.1
 six==1.11.0
 statsmodels==0.9.0
-terminado==0.8.1
+terminado==0.8.3
 testpath==0.3.1
 toml==0.10.2
 tornado==5.1.1
@@ -66,5 +67,4 @@ tqdm==4.33.0
 traitlets==4.3.2
 wcwidth==0.1.7
 webencodings==0.5.1
-widgetsnbextension==3.4.1
 zipp==1.2.0
