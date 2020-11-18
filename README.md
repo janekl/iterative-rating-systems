@@ -20,6 +20,12 @@ The project was developed in Python 3.5+. Package dependencies can be installed 
 $ pip install -r requirements.txt
 ```
 
+Perhaps the easiest way to get everyting up and running is to add the project directory to `PYTHONPATH` variable by appending the following line to `~/.bashrc`:
+
+```
+export PYTHONPATH="${PYTHONPATH}:/your/path/to/project/dir"
+```
+
 Directory `tests` provides some testing routines that can be run using [pytest](https://docs.pytest.org/en/stable/):
 ```bash
 $ ./run_tests.sh
