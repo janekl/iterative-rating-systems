@@ -238,16 +238,16 @@ class IterativeOLR:
     def fit_predict(self, matches, *args):
         teams = np.unique(matches[['HomeTeam', 'AwayTeam']].values.flatten())
         self.ratings = pd.Series([0.0] * len(teams), index=teams)
-        predictions = []
+        predictions = np.empty((len(matches), 3))
         v_i, v_j = 0.0, 0.0  # Momentum updates
-        for i, match in matches.iterrows():
+        for k, match in matches.iterrows():
             # Data and ratings
             team_i, team_j, result = match[['HomeTeam', 'AwayTeam', 'FTR']]
             r_i = self.ratings[team_i]
             r_j = self.ratings[team_j]
             # Predictions
             preds = self.predict_proba_single(team_i, team_j)
-            predictions.append(preds)
+            predictions[k] = self.predict_proba_single(team_i, team_j)
             # Updates
             update = self.get_update(result, preds)
             v_i = self.momentum * v_i + self.lr * (update - self.lambda_reg * r_i)
@@ -257,7 +257,7 @@ class IterativeOLR:
             # Save ratings
             self.ratings[team_i] = r_i
             self.ratings[team_j] = r_j
-        return np.array(predictions)
+        return predictions
 
 
 class PoissonRegression(ABC):
@@ -508,13 +508,17 @@ class IterativeMargin:
         p3 = x
         return [p1, p2, p3]
 
+    @staticmethod
+    def get_update(goals_i, goals_j, mu_i, mu_j):
+        return (goals_i - goals_j) - (mu_i - mu_j)
+
     def fit_predict(self, matches, *args):
         teams = np.unique(matches[['HomeTeam', 'AwayTeam']].values.flatten())
         self.ratings = pd.Series([0.0] * len(teams), index=teams)
-        predictions = []
+        predictions = np.empty((len(matches), 3))
         ratings_history = []
-        v_i, v_j = 0.0, 0.0  # Momentum udpate
-        for i, match in matches.iterrows():
+        v_i, v_j = 0.0, 0.0  # Momentum update
+        for k, match in matches.iterrows():
             # Data and scoring rates
             team_i, team_j, goals_i, goals_j = match[['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG']]
             r_i = self.ratings[team_i]
@@ -522,22 +526,22 @@ class IterativeMargin:
             mu_i = np.exp(self.c + r_i - r_j + self.h)
             mu_j = np.exp(self.c + r_j - r_i)
             # Predictions
-            predictions.append(self.predict_proba_single(team_i, team_j))
+            predictions[k] = self.predict_proba_single(team_i, team_j)
             # Clipping goals to avoid outliers
             if self.goal_cap != -1:
                 goals_i = min(goals_i, self.goal_cap)
                 goals_j = min(goals_j, self.goal_cap)
             # Updates
-            margin_diff = (goals_i - goals_j) - (mu_i - mu_j)
-            v_i = self.momentum * v_i + self.lr * (margin_diff - self.lambda_reg * r_i)
-            v_j = self.momentum * v_j + self.lr * (-margin_diff - self.lambda_reg * r_j)
+            update = self.get_update(goals_i, goals_j, mu_i, mu_j)
+            v_i = self.momentum * v_i + self.lr * (update - self.lambda_reg * r_i)
+            v_j = self.momentum * v_j + self.lr * (-update - self.lambda_reg * r_j)
             r_i += v_i
             r_j += v_j
             self.ratings[team_i] = r_i
             self.ratings[team_j] = r_j
             ratings_history.append([r_i, r_j])
         self.ratings_history = ratings_history
-        return np.array(predictions)
+        return predictions
 
 
 class IterativePoisson:
@@ -550,7 +554,7 @@ class IterativePoisson:
         self.lr = lr  # Learning rate
         self.lambda_reg = lambda_reg  # Regularization param
         self.rho = rho  # Correlation param
-        self.columns = ['att', 'def']  # Column names in rating matrix
+        self.columns = ('att', 'def')  # Column names in rating matrix
         self.momentum = momentum  # Momentum in SGD
         self.ratings = None
 
@@ -565,12 +569,16 @@ class IterativePoisson:
         p3 = x
         return [p1, p2, p3]
 
+    @staticmethod
+    def get_update(goals_i, goals_j, mu_i, mu_j):
+        return goals_i - mu_i, goals_j - mu_j
+
     def fit_predict(self, matches, *args):
         teams = np.unique(matches[['HomeTeam', 'AwayTeam']].values.flatten())
-        self.ratings = pd.DataFrame(np.zeros((len(teams), 2)), index=teams, columns=self.columns)
-        predictions = []
+        self.ratings = pd.DataFrame(np.zeros((len(teams), 2)), index=teams, columns=self.columns)  # default dict?
+        predictions = np.empty((len(matches), 3))
         va_i, vd_i, va_j, vd_j = 0.0, 0.0, 0.0, 0.0  # Momentum update
-        for i, match in matches.iterrows():
+        for k, match in matches.iterrows():
             # Data and scoring rates
             team_i, team_j, goals_i, goals_j = match[['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG']]
             a_i, d_i = self.ratings.loc[team_i]
@@ -578,20 +586,21 @@ class IterativePoisson:
             mu_i = np.exp(self.c + a_i - d_j + self.h)
             mu_j = np.exp(self.c + a_j - d_i)
             # Predictions
-            predictions.append(self.predict_proba_single(team_i, team_j))
+            predictions[k] = self.predict_proba_single(team_i, team_j)
             # Clipping goals to avoid outliers
             if self.goal_cap != -1:
                 goals_i = min(goals_i, self.goal_cap)
                 goals_j = min(goals_j, self.goal_cap)
             # Updates
-            va_i = self.momentum * va_i + self.lr * ((goals_i - mu_i) - self.lambda_reg * (a_i - self.rho * d_i))
-            vd_i = self.momentum * vd_i + self.lr * ((mu_j - goals_j) - self.lambda_reg * (d_i - self.rho * a_i))
-            va_j = self.momentum * va_j + self.lr * ((goals_j - mu_j) - self.lambda_reg * (a_j - self.rho * d_j))
-            vd_j = self.momentum * vd_i + self.lr * ((mu_i - goals_i) - self.lambda_reg * (d_j - self.rho * a_j))
+            update1, update2 = self.get_update(goals_i, goals_j, mu_i, mu_j)
+            va_i = self.momentum * va_i + self.lr * (update1 - self.lambda_reg * (a_i - self.rho * d_i))
+            vd_i = self.momentum * vd_i + self.lr * (-update2 - self.lambda_reg * (d_i - self.rho * a_i))
+            va_j = self.momentum * va_j + self.lr * (update2 - self.lambda_reg * (a_j - self.rho * d_j))
+            vd_j = self.momentum * vd_i + self.lr * (-update1 - self.lambda_reg * (d_j - self.rho * a_j))
             a_i += va_i
             d_i += vd_i
             a_j += va_j
             d_j += vd_j
             self.ratings.loc[team_i] = [a_i, d_i]
             self.ratings.loc[team_j] = [a_j, d_j]
-        return np.array(predictions)
+        return predictions

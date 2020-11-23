@@ -1,5 +1,5 @@
 import numpy as np
-from rating_models import IterativeOLR
+from rating_models import IterativeOLR, IterativeMargin, IterativePoisson
 from scipy.special import expit as logistic
 from numpy.testing import assert_allclose
 
@@ -51,7 +51,9 @@ def log_lik_pois1(r1, r2, c, h, g1, g2):
 
 
 def grad_log_lik_pois1_exact(r1, r2, c, h, g1, g2):
-    margin_diff = (g1 - g2) - (np.exp(c + r1 - r2 + h) - np.exp(c + r2 - r1))
+    mu1 = np.exp(c + r1 - r2 + h)
+    mu2 = np.exp(c + r2 - r1)
+    margin_diff = IterativeMargin.get_update(g1, g2, mu1, mu2)
     return -margin_diff, margin_diff
 
 
@@ -67,10 +69,11 @@ def log_lik_pois2(a1, a2, d1, d2, c, h, g1, g2):
     return g1 * xb1 - np.exp(xb1) + g2 * xb2 - np.exp(xb2)
 
 
-def grad_log_lik_pois2_exact2(a1, a2, d1, d2, c, h, g1, g2):
+def grad_log_lik_pois2_exact(a1, a2, d1, d2, c, h, g1, g2):
     mu1 = np.exp(c + a1 - d2 + h)
     mu2 = np.exp(c + a2 - d1)
-    return g1 - mu1, mu2 - g2, g2 - mu2, mu1 - g1
+    update1, update2 = IterativePoisson.get_update(g1, g2, mu1, mu2)
+    return update1, -update2, update2, -update1
 
 
 def grad_log_lik_pois2_approx(a1, a2, d1, d2, c, h, g1, g2, eps=1e-8):
@@ -111,6 +114,6 @@ def test_poisson2():
     h, c = 0.3, 0.02
     g1, g2 = np.random.poisson(lam=2.7, size=2)
     a1, a2, d1, d2 = np.random.normal(scale=0.25, size=4)
-    grad1 = grad_log_lik_pois2_exact2(a1, a2, d1, d2, c, h, g1, g2)
+    grad1 = grad_log_lik_pois2_exact(a1, a2, d1, d2, c, h, g1, g2)
     grad2 = grad_log_lik_pois2_approx(a1, a2, d1, d2, c, h, g1, g2, eps=1e-8)
     assert_allclose(grad1, grad2, rtol=1e-7, atol=1e-7)
