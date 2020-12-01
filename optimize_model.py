@@ -137,16 +137,14 @@ def parameter_search(model_class, momentum, matches, seasons_train, seasons_vali
     return results
 
 
-def train_valid_test_split(league, test_run):
+def train_valid_test_split(league, test_run=False):
     """Seasons for training, validation and testing for a given league."""
     seasons_all = ['{}_{:0>2}{:0>2}'.format(league, i, i + 1) for i in range(9, 19)]
     if test_run:
+        seasons_all = seasons_all[-3:]
         seasons_train = seasons_all[:1]
         seasons_valid = seasons_all[1:2]
         seasons_test = seasons_all[2:3]
-        seasons_all = seasons_train + seasons_valid + seasons_test
-        # Intersection should be empty!
-        # assert len(set(seasons_all)) == len(seasons_train) + len(seasons_valid) + len(seasons_test)
     else:
         seasons_train = seasons_all[:3]
         seasons_valid = seasons_all[3:6]
