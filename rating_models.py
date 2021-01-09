@@ -106,34 +106,58 @@ class OrdinalLogisticRegression:
             regularization = 0.5 * self.lambda_reg * np.square(betas).sum()
         return regularization
 
-    def _neg_loglik(self, params, X, y, sample_weight, n_classes, eps):
+    def _negative_loglik(self, params, X, y, sample_weight, n_classes, eps):
         betas = params[:X.shape[1]]
         thresholds = np.cumsum(params[X.shape[1]:])
         preds = self._predict_proba2(X, thresholds, betas, n_classes, eps=eps)
-        prob = preds[range(len(preds)), y]  # np.array([preds[i, j] for i, j in enumerate(y)])
+        prob = preds[range(len(preds)), y]
         penalty = self._get_regularization(betas)
         if sample_weight is not None:
             return -np.sum(np.log(prob) * sample_weight) + penalty
         else:
             return -np.sum(np.log(prob)) + penalty
 
+    def _get_grad_regularization(self, betas):
+        regularization = 0.0
+        if self.penalty == 'l1':
+            regularization = self.lambda_reg * np.sign(betas)
+        elif self.penalty == 'l2':
+            regularization = self.lambda_reg * betas
+        return regularization
+
+    def _grad_negative_loglik(self, params, X, y, sample_weight, n_classes, eps):
+        betas = params[:X.shape[1]]
+        thresholds = np.cumsum(params[X.shape[1]:])
+        proba = self._predict_proba2(X, thresholds, betas, n_classes, eps=eps)
+        dt1 = np.zeros(len(proba))
+        for i, preds in enumerate(proba):
+            dt1[i] = -IterativeOLR.get_update(y[i], preds)
+        dt1 *= sample_weight
+        p2 = proba[:, 2]
+        p01 = 1 - p2
+        dt2 = sample_weight * p01 * p2 / proba[range(len(proba)), y]
+        dt2[y == 2] *= -1
+        dt2[y == 0] = 0
+        # Gradient only in the case of a three-outcome model for now
+        grad = np.concatenate((dt1.dot(X) + self._get_grad_regularization(betas), (dt1.sum(), -dt2.sum())))
+        return grad
+
     def fit(self, X, y, sample_weight=None):
         X = self.get_features(X)
         n_classes = len(np.unique(y))
-        # Define threshold vectors as -0.5 for the first splitpoint
-        # and then their differences assuring they are positive to
-        # restrict all splitpoints in ORL model to  be increasing:
+        if n_classes != 3:
+            raise ValueError("Currently only three-way outcome ordinal logistic regression is supported")
+        # Define threshold vectors as -0.5 for the first splitpoint and then their diffs assuring they are positive
+        # to restrict all splitpoints in OLR model to be increasing so that predictions make sense:
         params = np.concatenate([np.random.randn(X.shape[1]), [-0.5] + [1.0] * (n_classes - 2)])
-        opt = optimize.minimize(self._neg_loglik, x0=params, args=(X, y, sample_weight, n_classes, self.eps),
+        opt = optimize.minimize(self._negative_loglik, x0=params, args=(X, y, sample_weight, n_classes, self.eps),
                                 bounds=((None, None),) * (X.shape[1] + 1) + ((0, None),) * (n_classes - 2),
-                                method='L-BFGS-B', jac=False, options={'disp': False, 'maxiter': 10 ** 4})
+                                method='L-BFGS-B', jac=self._grad_negative_loglik)
         params = opt.x
         self.betas = params[:X.shape[1]]
         self.thresholds = np.cumsum(params[X.shape[1]:])
-        # Predictions make sense only if thresholds are not decreasing
         if not all(np.diff(self.thresholds) > 0):
-            msg = 'Optimized thresholds in OrdinalLogisticRegression should be in non-decreasing.'
-            raise ValueError(msg)
+            raise ValueError("Optimized thresholds should be non-decreasing")
         self.n_classes = n_classes
 
     def predict_proba(self, X):
@@ -187,13 +211,11 @@ class OrdinalLogisticRatings(OrdinalLogisticRegression):
             team_encoding = dict(zip(teams, range(len(teams))))
             self.teams = teams
             self.team_encoding = team_encoding
-        # Array to store results
+        # Array to store match fixtures (design matrix)
         X = np.zeros((len(matches), len(self.teams)))
         for i, (home_team, away_team) in enumerate(zip(matches['HomeTeam'], matches['AwayTeam'])):
             X[i, self.team_encoding[home_team]] = 1.0
             X[i, self.team_encoding[away_team]] = -1.0
-        # for i, away_team in enumerate(matches['AwayTeam'], 0):
-        #     X[i, self.team_encoding[away_team]] = -1.0
         return X
 
     def get_features(self, X, prediction_phase=False):
@@ -247,7 +269,7 @@ class IterativeOLR:
             r_j = self.ratings[team_j]
             # Predictions
             preds = self.predict_proba_single(team_i, team_j)
-            predictions[k] = self.predict_proba_single(team_i, team_j)
+            predictions[k] = preds
             # Updates
             update = self.get_update(result, preds)
             v_i = self.momentum * v_i + self.lr * (update - self.lambda_reg * r_i)
@@ -341,8 +363,7 @@ class PoissonRegression(ABC):
         # TODO: Better starting values based on y?
         params = np.concatenate([np.array([0.01, 0.3]), np.zeros(n)])
         opt = optimize.minimize(self._negative_loglik, x0=params, args=(X, y, sample_weight, m),
-                                method=self.optimizer, jac=self._grad_negative_loglik,
-                                options={'disp': False, 'maxiter': None})
+                                method=self.optimizer, jac=self._grad_negative_loglik)
         params = opt.x
         self.c, self.h = params[:2]
         self.betas = params[2:]
