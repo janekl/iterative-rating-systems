@@ -132,10 +132,12 @@ class OrdinalLogisticRegression:
         dt1 = np.zeros(len(proba))
         for i, preds in enumerate(proba):
             dt1[i] = -IterativeOLR.get_update(y[i], preds)
-        dt1 *= sample_weight
         p2 = proba[:, 2]
         p01 = 1 - p2
-        dt2 = sample_weight * p01 * p2 / proba[range(len(proba)), y]
+        dt2 = p01 * p2 / proba[range(len(proba)), y]
+        if sample_weight is not None:
+            dt1 *= sample_weight
+            dt2 *= sample_weight
         dt2[y == 2] *= -1
         dt2[y == 0] = 0
         # Gradient only in the case of a three-outcome model for now
@@ -575,13 +577,13 @@ class IterativePoisson:
         self.lr = lr  # Learning rate
         self.lambda_reg = lambda_reg  # Regularization param
         self.rho = rho  # Correlation param
-        self.columns = ('att', 'def')  # Column names in rating matrix
         self.momentum = momentum  # Momentum in SGD
         self.ratings = None
+        self._columns = ('att', 'def')  # Column names in rating matrix
 
     def predict_proba_single(self, team_i, team_j):
-        a_i, d_i = self.ratings.loc[team_i, self.columns]
-        a_j, d_j = self.ratings.loc[team_j, self.columns]
+        a_i, d_i = self.ratings.loc[team_i]
+        a_j, d_j = self.ratings.loc[team_j]
         mu_i = np.exp(self.c + a_i - d_j + self.h)
         mu_j = np.exp(self.c + a_j - d_i)
         x, y = skellam.cdf([-1, 0], mu1=mu_i, mu2=mu_j)
@@ -596,7 +598,7 @@ class IterativePoisson:
 
     def fit_predict(self, matches, *args):
         teams = np.unique(matches[['HomeTeam', 'AwayTeam']].values.flatten())
-        self.ratings = pd.DataFrame(np.zeros((len(teams), 2)), index=teams, columns=self.columns)  # default dict?
+        self.ratings = pd.DataFrame(np.zeros((len(teams), 2)), index=teams, columns=self._columns)  # default dict?
         predictions = np.empty((len(matches), 3))
         va_i, vd_i, va_j, vd_j = 0.0, 0.0, 0.0, 0.0  # Momentum update
         for k, match in matches.iterrows():

@@ -26,9 +26,10 @@ def test_ordinal_logistic_ratings():
     model_olr = OrdinalLogisticRatings(lambda_reg=1.0, penalty='l1')
     X = model_olr.get_features(matches[['HomeTeam', 'AwayTeam']])
     y = matches[['FTHG', 'FTAG']].apply(goals2class, axis=1).values
-    sample_weight = np.random.uniform(0.5, 2., len(y))
-    args = (X, y, sample_weight, 3, 1e-8)
-    params = np.concatenate((np.random.randn(X.shape[1]), (-0.5, 1.0)))
-    grad_exact = model_olr._grad_negative_loglik(params, *args)
-    grad_approx = numerical_grad(model_olr, params, args)
-    assert_allclose(grad_exact, grad_approx, rtol=1e-6)
+    random_weights = np.random.uniform(0.5, 2., len(y))
+    for sample_weight in (random_weights, None):
+        args = (X, y, sample_weight, 3, 1e-8)
+        params = np.concatenate((np.random.randn(X.shape[1]), (-0.5, 1.0)))
+        grad_exact = model_olr._grad_negative_loglik(params, *args)
+        grad_approx = numerical_grad(model_olr, params, args)
+        assert_allclose(grad_exact, grad_approx, rtol=1e-6)
