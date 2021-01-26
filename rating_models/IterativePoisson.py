@@ -34,7 +34,7 @@ class IterativePoisson:
 
     def fit_predict(self, matches, *args):
         teams = np.unique(matches[['HomeTeam', 'AwayTeam']].values.flatten())
-        self.ratings = pd.DataFrame(np.zeros((len(teams), 2)), index=teams, columns=self._columns)  # default dict?
+        self.ratings = pd.DataFrame(0., index=teams, columns=self._columns)  # default dict?
         predictions = np.empty((len(matches), 3))
         va_i, vd_i, va_j, vd_j = 0.0, 0.0, 0.0, 0.0  # Momentum update
         for k, match in matches.iterrows():

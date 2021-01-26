@@ -59,12 +59,12 @@ def preprocess_odds(matches, htg_col="home_team_goal", atg_col="away_team_goal",
     all_odds = []
     # Normalize
     for i, odds in enumerate(all_odds_raw):
-        # Invert and normalize odds to get proper probability distribution
-        odds = 1. / odds
-        odds = odds.div(odds.sum(axis=1), axis=0)
-        if not (odds.isnull().mean() == 1).all():
+        if not odds.isnull().all(axis=None):
+            # Invert and normalize odds to get proper probability distribution
+            odds = 1. / odds
+            odds = odds.div(odds.sum(axis=1), axis=0)
             all_odds.append(odds)
-    # Average
+    # Average for individual matches
     pred_odds = []
     for i in range(len(matches)):
         odds_tmp = np.zeros(3)

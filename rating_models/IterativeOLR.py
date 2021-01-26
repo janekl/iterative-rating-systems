@@ -7,7 +7,7 @@ class IterativeOLR:
     """Iterative version of OLR model."""
 
     def __init__(self, c, h, lr, lambda_reg, momentum=0.0):
-        self.c = c  # Overall goal scoring rate
+        self.c = c  # Intercept (draw margin)
         self.h = h  # Home team advantage
         self.lr = lr  # Learning rate
         self.lambda_reg = lambda_reg  # Regularization param

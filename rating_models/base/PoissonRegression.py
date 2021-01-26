@@ -8,7 +8,7 @@ class PoissonRegression(ABC):
     """Base implementation of Poisson regression."""
 
     def __init__(self, penalty='l2', lambda_reg=0, optimizer='BFGS'):
-        assert penalty in [None, 'l1', 'l2']
+        assert penalty in {None, 'l1', 'l2'}
         self.optimizer = optimizer
         self.penalty = penalty
         self.lambda_reg = lambda_reg

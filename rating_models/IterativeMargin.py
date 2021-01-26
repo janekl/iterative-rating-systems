@@ -33,9 +33,9 @@ class IterativeMargin:
 
     def fit_predict(self, matches, *args):
         teams = np.unique(matches[['HomeTeam', 'AwayTeam']].values.flatten())
-        self.ratings = pd.Series([0.0] * len(teams), index=teams)
+        self.ratings = pd.Series(0., index=teams)
         predictions = np.empty((len(matches), 3))
-        ratings_history = []
+        ratings_history = np.empty((len(matches), 2))
         v_i, v_j = 0.0, 0.0  # Momentum update
         for k, match in matches.iterrows():
             # Data and scoring rates
@@ -58,6 +58,6 @@ class IterativeMargin:
             r_j += v_j
             self.ratings[team_i] = r_i
             self.ratings[team_j] = r_j
-            ratings_history.append([r_i, r_j])
+            ratings_history[k] = [r_i, r_j]
         self.ratings_history = ratings_history
         return predictions

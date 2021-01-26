@@ -9,7 +9,7 @@ class OrdinalLogisticRegression:
     """Base implementation of ordinal logistic regression."""
 
     def __init__(self, penalty=None, lambda_reg=0, weight=None, weight_params=None, eps=1e-8):
-        assert penalty in [None, 'l1', 'l2']
+        assert penalty in {None, 'l1', 'l2'}
         self.penalty = penalty
         self.lambda_reg = lambda_reg
         self.eps = eps
