@@ -1,5 +1,5 @@
 import numpy as np
-import pandas as pd
+from collections import defaultdict
 from scipy.special import expit as logistic
 
 
@@ -12,7 +12,7 @@ class IterativeOLR:
         self.lr = lr  # Learning rate
         self.lambda_reg = lambda_reg  # Regularization param
         self.momentum = momentum  # Momentum in SGD
-        self.ratings = None
+        self.ratings = defaultdict(float)
 
     def predict_proba_single(self, team_i, team_j):
         r_i = self.ratings[team_i]
@@ -33,8 +33,6 @@ class IterativeOLR:
             return preds[2] - 1
 
     def fit_predict(self, matches, *args):
-        teams = np.unique(matches[['HomeTeam', 'AwayTeam']].values.flatten())
-        self.ratings = pd.Series([0.0] * len(teams), index=teams)
         predictions = np.empty((len(matches), 3))
         v_i, v_j = 0.0, 0.0  # Momentum updates
         for k, match in matches.iterrows():

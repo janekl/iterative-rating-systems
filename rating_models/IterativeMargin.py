@@ -1,5 +1,5 @@
 import numpy as np
-import pandas as pd
+from collections import defaultdict
 from scipy.stats import skellam
 
 
@@ -13,7 +13,7 @@ class IterativeMargin:
         self.lr = lr  # Learning rate
         self.lambda_reg = lambda_reg  # Regularization param
         self.momentum = momentum  # Momentum in SGD
-        self.ratings = None
+        self.ratings = defaultdict(float)
         self.ratings_history = None
 
     def predict_proba_single(self, team_i, team_j):
@@ -32,8 +32,6 @@ class IterativeMargin:
         return (goals_i - goals_j) - (mu_i - mu_j)
 
     def fit_predict(self, matches, *args):
-        teams = np.unique(matches[['HomeTeam', 'AwayTeam']].values.flatten())
-        self.ratings = pd.Series(0., index=teams)
         predictions = np.empty((len(matches), 3))
         ratings_history = np.empty((len(matches), 2))
         v_i, v_j = 0.0, 0.0  # Momentum update

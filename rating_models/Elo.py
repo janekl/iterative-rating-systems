@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import numpy as np
 from . import OrdinalLogisticRegression
 
@@ -11,7 +13,7 @@ class Elo:
         self.c = c
         self.d = d
         self.prior = prior
-        self.ratings = {}
+        self.ratings = defaultdict(lambda: prior)
         self.model_olr = None
 
     def expected_result(self, rating_difference):
@@ -23,18 +25,7 @@ class Elo:
         else:
             raise RuntimeError('Internal OLR model has not been fitted yet.')
 
-    def _set_ratings_for_new_teams(self, teams):
-        for team in teams:
-            if team not in self.ratings:
-                self.ratings[team] = self.prior
-
-    def estimate_ratings(self, matches, initialize=True, predict=False):
-        teams = np.unique(matches[['HomeTeam', 'AwayTeam']].values.flatten())
-        if initialize:
-            # TODO: Possibly get rid of this and just set ratings for new teams
-            self.ratings = {team: self.prior for team in teams}
-        else:
-            self._set_ratings_for_new_teams(teams)
+    def estimate_ratings(self, matches, predict=False):
         predictions = []
         rating_differences = []
         for i, match in matches.iterrows():
@@ -68,5 +59,5 @@ class Elo:
         predictions[valid_index.values] = model_olr.predict_proba(X)
         self.model_olr = model_olr
         matches_test = matches[test_index]
-        _, predictions[test_index.values] = self.estimate_ratings(matches_test, initialize=False, predict=True)
+        _, predictions[test_index.values] = self.estimate_ratings(matches_test, predict=True)
         return predictions
