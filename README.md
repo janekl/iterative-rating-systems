@@ -4,7 +4,7 @@ This repository provides the implementation of several new iterative models for 
 
 The iterative versions of the popular football match outcome models are not only easier to maintain but also yield more accurate predictions than their counterparts estimated jointly using a sample of matches.
 
-The figure below concerns the *big six* Premier League teams for three selected seasons. The ratings are obtained through the iterative version of the one-parameter Poisson model which proved to be the most accurate approach in the comparison.
+The figure below concerns the *Big Six* Premier League teams for three selected seasons. The ratings are obtained through the iterative version of the one-parameter Poisson model which proved to be the most accurate approach in the comparison.
 
 ![big six](https://github.com/janekl/iterative-rating-systems/blob/master/misc/big_six_ratings.png?raw=true)
 
@@ -14,11 +14,7 @@ The repository is an integral part the paper by Jan Lasek and Marek Gągolewski 
 
 ### Environment
 
-The project was developed in Python 3.5+. Package dependencies can be installed with `pip` (in a virtual environment):
-
-```bash
-$ pip install -r requirements.txt
-```
+The project works with Python 3.7. Dependencies can be installed with, e.g., `pip` using `requirements.txt` file enclosed.
 
 Perhaps the easiest way to get everyting up and running is to add the project directory to `PYTHONPATH` variable by appending the following line to `~/.bashrc`:
 
