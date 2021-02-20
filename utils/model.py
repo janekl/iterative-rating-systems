@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import skellam
 
 
 def goals2class(goals):
@@ -48,3 +49,12 @@ def generate_predictions(model, matches, seasons, label_def, label_kwargs=None):
             model.fit(X_tr, y_tr, w_tr)
             predictions[test_index.values] = model.predict_proba(X_ts)
     return predictions
+
+
+def predict_skellam_1x2(mu1, mu2):
+    """Get 1x2 probabilities (home, draw, away) for Poisson goal rates (mu1, mu2) using Skellam distribution."""
+    p_2 = skellam.cdf(-1, mu1=mu1, mu2=mu2)
+    p_x2 = skellam.cdf(0, mu1=mu1, mu2=mu2)
+    p_1 = 1.0 - p_x2
+    p_x = p_x2 - p_2
+    return np.column_stack((p_1, p_x, p_2))

@@ -1,6 +1,6 @@
 import numpy as np
 from collections import defaultdict
-from scipy.stats import skellam
+from utils.model import predict_skellam_1x2
 
 
 class IterativePoisson:
@@ -21,11 +21,7 @@ class IterativePoisson:
         a_j, d_j = self.ratings[team_j]
         mu_i = np.exp(self.c + a_i - d_j + self.h)
         mu_j = np.exp(self.c + a_j - d_i)
-        x, y = skellam.cdf([-1, 0], mu1=mu_i, mu2=mu_j)
-        p1 = 1.0 - y
-        p2 = y - x
-        p3 = x
-        return [p1, p2, p3]
+        return predict_skellam_1x2(mu_i, mu_j)
 
     @staticmethod
     def get_update(goals_i, goals_j, mu_i, mu_j):

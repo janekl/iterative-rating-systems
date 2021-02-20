@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize
-from scipy.stats import skellam
 from abc import ABC, abstractmethod
+from utils.model import predict_skellam_1x2
 
 
 class PoissonRegression(ABC):
@@ -20,12 +20,7 @@ class PoissonRegression(ABC):
         Xb = X.dot(self.betas)
         eXb_plus_c = np.exp(Xb) + self.c
         mu1, mu2 = eXb_plus_c[:m] + self.h, eXb_plus_c[m:]
-        p3 = skellam.cdf(-1, mu1=mu1, mu2=mu2)
-        p23 = skellam.cdf(0, mu1=mu1, mu2=mu2)
-        p1 = 1.0 - p23
-        p2 = p23 - p3
-        preds = np.array([p1, p2, p3]).T
-        return preds
+        return predict_skellam_1x2(mu1, mu2)
 
     def _get_regularization(self, betas):
         regularization = 0.0
